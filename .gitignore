@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# macOS garbage
+.DS_Store
+
+# caches
+.cache.sqlite
+
+# VSCode
+.vscode/
