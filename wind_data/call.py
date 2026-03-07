@@ -1,5 +1,5 @@
 import openmeteo_requests
-
+import json
 import pandas as pd
 import requests_cache
 from retry_requests import retry
@@ -50,3 +50,8 @@ hourly_data["wind_gusts_10m"] = hourly_wind_gusts_10m
 hourly_dataframe = pd.DataFrame(data = hourly_data)
 print("\nHourly data\n", hourly_dataframe)
 
+
+all_record = hourly_dataframe.to_dict(orient="records")
+
+with open("latest_weather.json", "w") as f:
+    json.dump(all_record, f, indent=4, default=str)
