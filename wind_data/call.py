@@ -49,3 +49,4 @@ hourly_data["wind_gusts_10m"] = hourly_wind_gusts_10m
 
 hourly_dataframe = pd.DataFrame(data = hourly_data)
 print("\nHourly data\n", hourly_dataframe)
+
