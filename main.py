@@ -1,27 +1,52 @@
-import numpy as np  
-import scipy
+import numpy as np
+from phy import mph_to_ms, wind_force, bending_moment, lodging_resistance, lodging_risk, lodging_probability
 
-# let short corn be 5 ft. tall, as a constant
-# let tall corn be 7 ft. tall, as a constant
+rho = 1.225 # https://www.sciencedirect.com/science/article/pii/S0378429023002010
+Cd = 0.35
+A = 0.5
 
-short_corn = 1.7 # https://www.researchgate.net/publication/223831105_Tollenaar_M_Lee_E_A_Yield_potential_yield_stability_and_stress_tolerance_in_maize_Field_Crop_Res_2002
-tall_corn = 2.81 # https://www.sciencedirect.com/science/article/pii/S0378429002001247
+alpha = 1.14
 
-# the force of wind
-f = lambda x: x
 
-# integrate force of wind by height (should be ds)
-# scipy.integrate.quad returns a tuple with (res, precision)
-s_total = scipy.integrate.quad(f, 0, short_corn)[0]
-t_total = scipy.integrate.quad(f, 0, tall_corn)[0]
+short_corn = 1.7  # meters
+# Source: Tollenaar & Lee (2002), Field Crops Research
 
-# arbitrary constants that depend on agregate of soil, identity of plant, etc
-root_sys_s = 1 
-root_sys_t = 1.5 
+tall_corn = 2.81  # meters
+# Source: Tollenaar et al., Field Crops Research studies on maize architecture
 
-s = s / root_sys_s
-t = t / root_sys_t
+S_short = 120
+S_tall = 120
 
-print(s_total, t_total)
 
-# assume there is a function of wind, given break points, can estimate
+
+def simulate(n_events=1):
+
+    short_falls = 0
+    tall_falls = 0
+
+    for _ in range(n_events):
+
+        # sample wind gust
+        wind = np.random.normal(25, 10)
+
+        wind = max(wind,0)
+
+        risk_s = lodging_risk(wind, short_corn, S_short)
+        risk_t = lodging_risk(wind, tall_corn, S_tall)
+
+        p_s = lodging_probability(risk_s)
+        p_t = lodging_probability(risk_t)
+
+        if np.random.rand() < p_s: # we are simulating 
+            short_falls += 1
+
+        if np.random.rand() < p_t:
+            tall_falls += 1
+
+    return short_falls/n_events, tall_falls/n_events
+
+
+short_prob, tall_prob = simulate()
+
+print("Short corn lodging probability:", short_prob)
+print("Tall corn lodging probability:", tall_prob)
