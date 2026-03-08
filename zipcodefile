@@ -1,4 +1,12 @@
 [
-  {"zip": "61701", "lat": 40.48, "long": -88.99},
-  {"zip": "61820", "lat": 40.11, "long": -88.24}
+  {"zip": "61701 (McLean County, IL)", "lat": 40.48, "long": -88.99},
+  {"zip": "61820 (Champaign County, IL)", "lat": 40.11, "long": -88.24},
+  {"zip": "10001 (New York County, NY)", "lat": 40.75, "long": -73.99},
+  {"zip": "30303 (Fulton County, GA)", "lat": 33.75, "long": -84.39},
+  {"zip": "73301 (Travis County, TX)", "lat": 30.27, "long": -97.74},
+  {"zip": "85001 (Maricopa County, AZ)", "lat": 33.45, "long": -112.07},
+  {"zip": "94105 (San Francisco County, CA)", "lat": 37.79, "long": -122.39},
+  {"zip": "98101 (King County, WA)", "lat": 47.61, "long": -122.33},
+  {"zip": "33101 (Miami-Dade County, FL)", "lat": 25.77, "long": -80.19},
+  {"zip": "15222 (Allegheny County, PA)", "lat": 40.45, "long": -79.99}
 ]

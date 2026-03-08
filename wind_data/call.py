@@ -6,7 +6,7 @@ from retry_requests import retry
 from pathlib import Path
 
 
-def fetch_weather(latitude, longitude, year):
+def fetch_weather(latitude, longitude, year_start, year_end):
     """
     Fetch weather data from Open-Meteo and save to wind_data/latest_weather.json
     """
@@ -19,8 +19,8 @@ def fetch_weather(latitude, longitude, year):
 
     # ---------------- API parameters ----------------
 
-    start_date = f"{year}-01-01"
-    end_date = f"{year}-12-31"
+    start_date = f"{year_start}-01-01"
+    end_date = f"{year_end}-12-31"
 
     url = "https://archive-api.open-meteo.com/v1/archive"
 
@@ -68,7 +68,12 @@ def fetch_weather(latitude, longitude, year):
     hourly_data["wind_gusts_10m"] = hourly_wind_gusts
 
     df = pd.DataFrame(hourly_data)
+    df["date"] = pd.to_datetime(df["date"])
 
+    df = df[
+        (df["date"].dt.month.isin([9, 10])) &
+        (df["date"].dt.day.between(1, 30))
+    ]
     # ---------------- Convert to records ----------------
 
     records = df.to_dict(orient="records")
