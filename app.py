@@ -426,3 +426,14 @@ else:
     st.success(
         "TALL corn produces higher profit despite lodging risk."
     )
+st.divider()
+
+st.markdown("""
+**Sources**
+Bayer PRECEON™ Smart Corn System  
+https://www.bayer.com/en/agriculture/preceon-smart-corn-system
+
+Tall and Short Stature Corn Agronomic Response to Nitrogen Rates – Crop Science  
+https://acsess.onlinelibrary.wiley.com/doi/10.1002/csc2.20702
+
+""")
