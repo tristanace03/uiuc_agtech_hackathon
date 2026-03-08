@@ -19,8 +19,8 @@ def fetch_weather(latitude, longitude, year):
 
     # ---------------- API parameters ----------------
 
-    start_date = f"{year}-01-01"
-    end_date = f"{year}-12-31"
+    start_date = f"{year}-09-01"
+    end_date = f"{year}-10-30"
 
     url = "https://archive-api.open-meteo.com/v1/archive"
 
@@ -49,7 +49,7 @@ def fetch_weather(latitude, longitude, year):
     hourly_temperature = hourly.Variables(0).ValuesAsNumpy()
     hourly_wind_speed = hourly.Variables(1).ValuesAsNumpy()
     hourly_wind_direction = hourly.Variables(2).ValuesAsNumpy()
-    hourly_wind_gusts = hourly.Variables(3).ValuesAsNumpy()
+    hourly_wind_gusts = hourly.Variables(3).ValuesAsNumpy()*1.6 # multiply by 1.6 since dataset is not going to capture tthe immediacies
 
     # ---------------- Build dataframe ----------------
 

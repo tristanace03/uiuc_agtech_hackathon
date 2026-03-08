@@ -14,17 +14,17 @@ AREA = 0.3
 
 # ---------------- Plant geometry ----------------
 
-SHORT_HEIGHT = 1.7
-TALL_HEIGHT = 2.81
+SHORT_HEIGHT = 1.7 * 0.65
+TALL_HEIGHT = 2.81 * 0.65 # correction due to moment arm
 
 # ---------------- Strength distribution ----------------
 
-MEAN_STRENGTH = 150 * 0.85 # correction due to lower pos_Y
-STD_STRENGTH = 15
+MEAN_STRENGTH = 150
+STD_STRENGTH = 45
 
 # ---------------- Grid size ----------------
 
-N = 90
+N = 400
 
 
 # -------------------------------------------------------
