@@ -10,7 +10,7 @@ import random
 
 RHO = 1.225
 CD = 1.1
-AREA = 0.18
+AREA = 0.3
 
 # ---------------- Plant geometry ----------------
 
@@ -19,7 +19,7 @@ TALL_HEIGHT = 2.81
 
 # ---------------- Strength distribution ----------------
 
-MEAN_STRENGTH = 150 
+MEAN_STRENGTH = 150 * 0.85 # correction due to lower pos_Y
 STD_STRENGTH = 15
 
 # ---------------- Grid size ----------------
@@ -56,29 +56,28 @@ def bending_moment(force, height):
 
 def is_exposed(i, j, grid, direction):
 
-    # convert wind direction to grid offset
     deg = float(direction) % 360
 
-    if 45 <= deg < 135:
-        di, dj = (0, -1)      # ~east
-    elif 135 <= deg < 225:
-        di, dj = (-1, 0)      # ~south
-    elif 225 <= deg < 315:
-        di, dj = (0, 1)     # ~west
-    else:
-        di, dj = (1, 0)     # ~north
+    # wind direction = where wind COMES FROM
 
-    # location of the plant upwind
-    ui = i - di
-    uj = j - dj
+    if 45 <= deg < 135:      # wind from East
+        ui, uj = i, j + 1
 
-    # if upwind position is outside field → plant is on windward edge
-    if ui < 0 or ui >= N or uj < 0 or uj >= N:
+    elif 135 <= deg < 225:   # wind from South
+        ui, uj = i + 1, j
+
+    elif 225 <= deg < 315:   # wind from West
+        ui, uj = i, j - 1
+
+    else:                    # wind from North
+        ui, uj = i - 1, j
+
+    # check field boundary
+    if ui < 0 or ui >= grid.shape[0] or uj < 0 or uj >= grid.shape[1]:
         return True
 
-    # plant becomes exposed if the upwind neighbor has fallen
+    # exposed if upwind plant has fallen
     return not grid[ui, uj]
-
 
 # -------------------------------------------------------
 # Main simulation
@@ -220,7 +219,7 @@ daily_gust = weather_df.groupby("day")["wind_gusts_10m"].max()
 worst_days = daily_gust.nlargest(3)
 
 
-st.subheader("Top 3 Wind Days")
+st.subheader("Top 3 Wind Days During Near-Harvest")
 
 for i, (day, gust) in enumerate(worst_days.items(), start=1):
 
