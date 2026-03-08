@@ -1,149 +1,172 @@
 import numpy as np
 import json
+import random
 
 # physical constants
+RHO = 1.225
+CD = 1.1
+AREA = 0.18
 
-rho = 1.225          # air density kg/m^3
-Cd = 1.1             # canopy drag coefficient
-A = 0.08             # effective frontal area per plant (m^2)
+# plant properties
+SHORT_HEIGHT = 1.7
+TALL_HEIGHT = 2.81
 
-alpha = 1.14         # exponent from paper
+SHORT_STRENGTH = 55
+TALL_STRENGTH = 70
 
-canopy_wind_factor = 0.7   # wind reduction inside crop canopy
+# damage sensitivity constant
+K_DAMAGE = 0.7
 
-# plant properties 
-short_corn = 1.7
-tall_corn = 2.81
-
-# DARLING-style bending strengths (N*m)
-S_short = 220
-S_tall = 220
-
-
-# physics helpers
-def mph_to_ms(v_mph):
-    return v_mph * 0.44704
+# grid size
+N = 100
 
 
-def wind_force(v_mph):
-    """
-    Drag force from wind
-    """
-    v = mph_to_ms(v_mph)
-    return 0.5 * rho * Cd * A * v**2
+# drag force from wind
+def drag_force(v_mph):
+
+    v = v_mph * 0.44704
+    return 0.5 * RHO * CD * AREA * v**2
 
 
-def wind_moment(v_mph, height):
-    """
-    Convert wind force to bending moment.
-    Center of pressure assumed ~0.6h
-    """
-    F = wind_force(v_mph)
-    return F * (0.6 * height)
+# bending moment
+def bending_moment(force, height):
+
+    return force * height
 
 
-def safety_factor(v_mph, height, strength):
-    """
-    SF = resistance / applied moment
-    """
-    M = wind_moment(v_mph, height)
+# hourly failure probability
+def hourly_failure_probability(moment, strength):
 
-    resistance = strength * height**(-alpha)
+    load_ratio = moment / strength
 
-    if M == 0:
-        return np.inf
+    damage = max(0, load_ratio - 1)
 
-    return resistance / M
+    return 1 - np.exp(-K_DAMAGE * damage)
 
 
-# probabilistic failure
+# wind direction → neighbor
+def wind_offset(direction):
 
-def snap_probability(sf, k=4):
-    """
-    Logistic failure curve centered at SF=1
-    """
-    x = np.clip(1 - sf, -50, 50)
-    return 1 / (1 + np.exp(-k * x))
+    deg = float(direction) % 360
+
+    if 45 <= deg < 135:
+        return (0, 1)
+    elif 135 <= deg < 225:
+        return (1, 0)
+    elif 225 <= deg < 315:
+        return (0, -1)
+    else:
+        return (-1, 0)
+
+# windward edge cells
+def windward_edge(di, dj):
+
+    if di == -1:
+        return [(0, j) for j in range(N)]
+    if di == 1:
+        return [(N-1, j) for j in range(N)]
+    if dj == -1:
+        return [(i, 0) for i in range(N)]
+    if dj == 1:
+        return [(i, N-1) for i in range(N)]
 
 
-def plant_snaps(v_mph, height, strength):
-    sf = safety_factor(v_mph, height, strength)
-    p = snap_probability(sf)
-
-    return np.random.rand() < p, sf, p
-
-
-# simulation
-
-def simulate(debug=True):
+# main simulation
+def simulate():
 
     with open("wind_data/latest_weather.json") as f:
         weather = json.load(f)
 
-    short_alive = True
-    tall_alive = True
+    short_alive = np.ones((N, N), dtype=bool)
+    tall_alive = np.ones((N, N), dtype=bool)
 
-    short_time = None
-    tall_time = None
+    short_fall_time = np.full((N, N), -1)
+    tall_fall_time = np.full((N, N), -1)
 
-    for i, record in enumerate(weather):
+    for t, record in enumerate(weather):
 
-        wind = max(record["wind_gusts_10m"], 0)
+        speed = record["wind_speed_10m"]
+        gust = record["wind_gusts_10m"]
 
-        # canopy reduction since we measure at 10 meters but the crop is well lower
-        wind *= canopy_wind_factor
+        wind = max(speed, gust)
 
-        if debug and i < 20:
-            print("\n--- timestep", i, "---")
-            print("raw wind:", record["wind_gusts_10m"], "mph")
-            print("canopy wind:", wind, "mph")
+        direction = record["wind_direction_10m"]
 
-        # short corn
-        if short_alive:
+        F = drag_force(wind)
 
-            snapped, sf, p = plant_snaps(wind, short_corn, S_short)
+        M_short = bending_moment(F, SHORT_HEIGHT)
+        M_tall = bending_moment(F, TALL_HEIGHT)
 
-            if debug and i < 20:
-                print("short SF:", round(sf,3), "prob:", round(p,3))
+        p_short = hourly_failure_probability(M_short, SHORT_STRENGTH)
+        p_tall = hourly_failure_probability(M_tall, TALL_STRENGTH)
 
-            if snapped:
-                short_alive = False
-                short_time = i
+        di, dj = wind_offset(direction)
 
-                if debug:
-                    print("SHORT CORN SNAPPED")
+        # seed windward edge
 
-        # tall corn
-        if tall_alive:
+        for i, j in windward_edge(di, dj):
 
-            snapped, sf, p = plant_snaps(wind, tall_corn, S_tall)
+            if short_alive[i, j] and random.random() < p_short:
+                short_alive[i, j] = False
+                short_fall_time[i, j] = t
+                break
 
-            if debug and i < 20:
-                print("tall SF:", round(sf,3), "prob:", round(p,3))
+        for i, j in windward_edge(di, dj):
 
-            if snapped:
-                tall_alive = False
-                tall_time = i
+            if tall_alive[i, j] and random.random() < p_tall:
+                tall_alive[i, j] = False
+                tall_fall_time[i, j] = t
+                break
 
-                if debug:
-                    print("TALL CORN SNAPPED")
+        # cascade candidates
 
-    return short_alive, tall_alive, short_time, tall_time
+        candidates_short = []
+        candidates_tall = []
 
+        for i in range(N):
+            for j in range(N):
 
-# run
+                ni = i + di
+                nj = j + dj
 
-short_alive, tall_alive, short_time, tall_time = simulate()
+                if 0 <= ni < N and 0 <= nj < N:
 
-print("\n=========================")
-print("RESULTS")
-print("=========================")
+                    if short_alive[i, j] and not short_alive[ni, nj]:
+                        candidates_short.append((i, j))
 
-print("Short corn survived:", short_alive)
-print("Tall corn survived:", tall_alive)
+                    if tall_alive[i, j] and not tall_alive[ni, nj]:
+                        candidates_tall.append((i, j))
 
-if short_time is not None:
-    print("Short corn snapped at timestep:", short_time)
+        random.shuffle(candidates_short)
+        random.shuffle(candidates_tall)
 
-if tall_time is not None:
-    print("Tall corn snapped at timestep:", tall_time)
+        # at most one fall / hour
+
+        for i, j in candidates_short:
+
+            if random.random() < p_short:
+
+                short_alive[i, j] = False
+                short_fall_time[i, j] = t
+                break
+
+        for i, j in candidates_tall:
+
+            if random.random() < p_tall:
+
+                tall_alive[i, j] = False
+                tall_fall_time[i, j] = t
+                break
+
+    return short_alive, tall_alive, short_fall_time, tall_fall_time
+# run simulation
+short_grid, tall_grid, short_time, tall_time = simulate()
+
+print("Short corn remaining:", np.sum(short_grid))
+print("Tall corn remaining:", np.sum(tall_grid))
+
+print("\nShort corn grid")
+print(short_grid.astype(int))
+
+print("\nTall corn grid")
+print(tall_grid.astype(int))
